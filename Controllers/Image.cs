@@ -1,23 +1,14 @@
-using Microsoft.AspNetCore.Mvc;
-using System.IO;
+﻿using Microsoft.AspNetCore.Mvc;
 
-namespace cherished_server.Controllers
+namespace cherished_server.Services
 {
-    public class ImageController : Controller
+    [ApiController]
+    public class Image
     {
         [HttpGet]
-        [Route("image/{imageName}")]
-        public IActionResult GetImage(string imageName)
+        public IActionResult GetImage([FromQuery] string size, [FromQuery] int key)
         {
-            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", imageName);
-
-            if (!System.IO.File.Exists(filePath))
-            {
-                return NotFound();
-            }
-
-            var image = System.IO.File.ReadAllBytes(filePath);
-            return File(image, "image/jpeg");
+            var image = System.IO.File.OpenRead(imagePath); 
+            return new File(image, "image/jpeg"); }
         }
-    }
 }
