@@ -3,12 +3,21 @@
 namespace cherished_server.Services
 {
     [ApiController]
-    public class Image : ControllerBase
+    [Route("image")]
+    public class ImageController : ControllerBase
     {
-        [HttpGet]
-        public IActionResult GetImage([FromQuery] string size, [FromQuery] int key)
+        private readonly Pool _Pool;
+
+        public ImageController(Pool pool)
         {
-            var image = System.IO.File.OpenRead("F:\\Data\\Pictures\\2024\\Halloween\\FB_IMG_1728821589567.jpg"); 
+            _Pool = pool;
+        }
+        [HttpGet] 
+        [Route("")]
+        public IActionResult GetImage([FromQuery] int key)
+        {
+            var path = _Pool.GetFilePath(key);
+            var image = System.IO.File.OpenRead(path); 
             return File(image, "image/jpeg"); }
         }
 }

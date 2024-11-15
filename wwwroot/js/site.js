@@ -2,5 +2,8 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     const app = new Main();
-    app.init();
+    if(document){
+        const canvas = document.getElementById('canvas');
+        app.init(canvas);
+    }
 });
