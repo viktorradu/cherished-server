@@ -12,12 +12,20 @@ namespace cherished_server.Services
         {
             _Pool = pool;
         }
-        [HttpGet] 
+        [HttpGet]
         [Route("")]
         public IActionResult GetImage([FromQuery] int key)
         {
             var path = _Pool.GetFilePath(key);
-            var image = System.IO.File.OpenRead(path); 
-            return File(image, "image/jpeg"); }
+            var image = System.IO.File.OpenRead(path);
+            return File(image, "image/jpeg");
         }
+        
+        [HttpGet]
+        [Route("loadpool")]
+        public IActionResult LoadPool()
+        {
+            return Ok(_Pool.PoolSize);
+        }
+    }
 }

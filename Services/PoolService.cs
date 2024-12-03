@@ -16,9 +16,12 @@ public class PoolService : BackgroundService
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            _logger.LogInformation("Indexing");
-
-            await _Pool.BuildPool(stoppingToken); 
+            if(_Pool.PoolSize == 0){
+                _logger.LogInformation("Indexing");
+                await _Pool.BuildPool();
+                _logger.LogInformation("Indexing complete. {} files included in the pool", _Pool.PoolSize);
+            } 
+           await Task.Delay(10000, stoppingToken);
         }
 
         _logger.LogInformation("Indexer Service is stopping.");

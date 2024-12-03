@@ -1,11 +1,18 @@
+using Microsoft.Extensions.Options;
+
 public class Pool{
     private readonly List<PoolItem> _Pool = new List<PoolItem>();
     private string PoolFolder = "";
     private string PoolFilter = "";
-    private int PoolSize { get; set; }
+    public int PoolSize { get; set; }
 
+    public Pool(IOptions<PoolSettings> settings)
+    {
+        PoolFolder = settings.Value.PoolFolder;
+        PoolFilter = settings.Value.PoolFilter;
+    }
 
-    public async Task BuildPool(CancellationToken stoppingToken)
+    public async Task BuildPool()
     {
         _Pool.Clear();
         await BuildPoolRecursive(PoolFolder);
@@ -13,7 +20,12 @@ public class Pool{
 
     private async Task BuildPoolRecursive(string startDir)
     {
-        foreach (var dir in Directory.GetDirectories(startDir))
+        var dirs = new List<string>
+        {
+            startDir
+        };
+        dirs.AddRange(Directory.GetDirectories(startDir));
+        foreach (var dir in dirs)
         {
             var fileCount = GetFileList(dir).Length;
             if (fileCount > 0)
@@ -21,7 +33,9 @@ public class Pool{
                 _Pool.Add(new PoolItem(dir, PoolSize, PoolSize + fileCount - 1));
                 PoolSize += fileCount;
             }
-            await BuildPoolRecursive(dir);
+            if(dir != startDir){
+                await BuildPoolRecursive(dir);
+            }
         }
     }
 

@@ -1,8 +1,11 @@
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.Configure<PoolSettings>(builder.Configuration.GetSection("PoolSettings"));
+
 builder.Services.AddControllers();
 builder.Services.AddRazorPages();
 builder.Services.AddHostedService<PoolService>();
+builder.Services.AddSingleton<Pool>();
 
 var app = builder.Build();
 
