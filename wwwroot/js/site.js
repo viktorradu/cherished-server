@@ -3,7 +3,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const app = new Main();
     if(document){
-        const canvas = document.getElementById('canvas');
-        app.init(canvas);
+        const target = document.getElementById('main');
+        app.init(target);
     }
 });

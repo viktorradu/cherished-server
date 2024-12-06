@@ -1,22 +1,19 @@
-html {
-  font-size: 14px;
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
-@media (min-width: 768px) {
-  html {
-    font-size: 16px;
-  }
+.ch-container{
+  height: 100%;
+  text-align: center;
+  overflow: hidden;
 }
 
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+.ch-image-h{
+  height: 100%;
 }
 
-html {
-  position: relative;
-  min-height: 100%;
-}
-
-body {
-  margin-bottom: 60px;
+.ch-image-w{
+  width: 100%;
 }
