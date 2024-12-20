@@ -4,6 +4,7 @@
         this.intervalId = null;
         this.target = null;
         this.mainImage = null;
+        this.background = null;
         this.statusBox = null;
         this.updateSlide = this.updateSlide.bind(this);
         this.poolSize = 0;
@@ -15,14 +16,10 @@
         this.intervalId = setInterval(this.updateSlide, this.slideshowIntervalMs);
         this.target = target;
         this.target.className = 'ch-container';
-        this.mainImage = document.createElement('img');
-        this.mainImage.className = 'ch-image-h';
-        this.mainImage.title = 'Loading image...';
-        this.target.appendChild(this.mainImage);
-        this.statusBox = document.createElement('div');
-        this.statusBox.className = 'ch-status';
-        this.target.appendChild(this.statusBox);
-        target.addEventListener('click', ()=>{
+        this.mainImage = this.target.querySelector('img');
+        this.background = this.target.querySelector('.ch-background');
+        this.statusBox = this.target.querySelector('.ch-status');
+        this.target.addEventListener('click', ()=>{
             if(this.state === 'running'){
                 this.state = 'paused';
                 this.flashStatus('Paused');
@@ -35,16 +32,23 @@
 
     updateSlide() {
         if(this.poolSize === 0 && !this.poolUpdateRequested){
+            this.poolUpdateRequested = true;
             fetch("image/loadpool")
             .then(response => response.json())
             .then(data => {
                 this.poolSize = data;
-                this.poolUpdateRequested = true;
+                
             });
         }
-        if(this.poolSize > 0){
+        if(this.poolSize > 0 && this.state === 'running'){
             let key = Math.floor(Math.random() * this.poolSize);
-            this.mainImage.src = `image?key=${key}`;
+            let image_uri = `image?key=${key}`
+            const img = new Image();
+            img.src = image_uri;
+            img.onload = () => {
+                this.background.style.backgroundImage = "url('" + image_uri + "')";
+                this.mainImage.src = image_uri;
+            }; 
         }
     }
 
