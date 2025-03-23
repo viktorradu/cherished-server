@@ -25,7 +25,7 @@ namespace cherished_server.Services
         [Route("loadpool")]
         public IActionResult LoadPool()
         {
-            return Ok(_Pool.PoolSize);
+            return Ok(new {PoolSize = _Pool.PoolSize, SlideshowIntervalMs = _Pool.SlideshowIntervalMs});
         }
     }
 }

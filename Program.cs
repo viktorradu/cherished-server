@@ -7,6 +7,12 @@ builder.Services.AddRazorPages();
 builder.Services.AddHostedService<PoolService>();
 builder.Services.AddSingleton<Pool>();
 
+builder.WebHost.ConfigureKestrel((context, options) =>
+{
+    options.Configure(context.Configuration.GetSection("Kestrel"));
+});
+
+
 var app = builder.Build();
 
 app.UseStaticFiles();

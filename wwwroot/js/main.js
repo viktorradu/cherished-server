@@ -9,7 +9,6 @@
         this.updateSlide = this.updateSlide.bind(this);
         this.poolSize = 0;
         this.poolUpdateRequested = false;
-        this.state = 'running';
         this.history = new Array(100).fill(null);
         this.historyHead = 0;
         this.historyOffset = 0;
@@ -21,59 +20,80 @@
         this.mainImage = this.target.querySelector('img');
         this.background = this.target.querySelector('.ch-background');
         this.statusBox = this.target.querySelector('.ch-status');
-        this.target.addEventListener('click', ()=>{
-            if(this.state === 'running'){
-                this.state = 'paused';
-                this.flashStatus('Paused');
-            }else{
-                this.state = 'running';
+        const buttonNext = this.target.querySelector('.ch-button-next');
+        buttonNext.addEventListener('click', (e) => {
+            clearTimeout(this.timeoutId);
+            this.updateSlide(1);
+            e.stopPropagation();
+        });
+        const buttonPrev = this.target.querySelector('.ch-button-prev');
+        buttonPrev.addEventListener('click', (e) => {
+            clearTimeout(this.timeoutId);
+            this.updateSlide(-1);
+            e.stopPropagation();
+        });
+        const buttonFlag = this.target.querySelector('.ch-button-flag');
+        buttonFlag.addEventListener('click', (e) => {
+            alert('Flag not implemented yet');
+            e.stopPropagation();
+        });
+        this.target.addEventListener('click', () => {
+            if(this.target.classList.contains('paused')) {
                 this.flashStatus('Running');
+                this.target.classList.remove('paused');
+                clearTimeout(this.timeoutId);
+                this.updateSlide();
+            } else {
+                this.flashStatus('Paused');
+                this.target.classList.add('paused');
+                clearTimeout(this.timeoutId);
             }
         });
-        window.addEventListener('keyup', (event)=>{
-            if(event.key === 'ArrowRight'){
+        window.addEventListener('keyup', (event) => {
+            if (event.key === 'ArrowRight') {
                 clearTimeout(this.timeoutId);
                 this.updateSlide(1);
             }
-            if(event.key === 'ArrowLeft'){
+            if (event.key === 'ArrowLeft') {
                 clearTimeout(this.timeoutId);
                 this.updateSlide(-1);
             }
         });
-        if(this.poolSize === 0 && !this.poolUpdateRequested){
+        if (this.poolSize === 0 && !this.poolUpdateRequested) {
             this.poolUpdateRequested = true;
             fetch("image/loadpool")
-            .then(response => response.json())
-            .then(data => {
-                this.poolSize = data;
-                if(this.poolSize > 0){
-                    this.updateSlide();
-                }
-            });
+                .then(response => response.json())
+                .then(data => {
+                    this.poolSize = data.poolSize;
+                    this.slideshowIntervalMs = data.slideshowIntervalMs;
+                    if (this.poolSize > 0) {
+                        this.updateSlide();
+                    }
+                });
         }
     }
 
-    updateSlide(push = 0){
-        if(this.poolSize > 0 && this.state === 'running'){
+    updateSlide(push = 0) {
+        if (this.poolSize > 0) {
             let key = null;
 
-            if(push >= 0){
-                if(this.historyOffset > 0){
+            if (push >= 0) {
+                if (this.historyOffset > 0) {
                     this.historyOffset--;
                 }
-            }else{
+            } else {
                 this.historyOffset++;
             }
 
-            if(this.historyOffset > 0){
+            if (this.historyOffset > 0) {
                 const historyIndex = this.historyHead - this.historyOffset;
-                if(historyIndex < 0){
+                if (historyIndex < 0) {
                     historyIndex = this.history.length + historyIndex;
                 }
                 key = this.history[this.historyHead - this.historyOffset];
             }
-            
-            if(key === null){
+
+            if (key === null) {
                 key = Math.floor(Math.random() * this.poolSize);
                 this.historyHead = (this.historyHead + 1) % this.history.length;
                 this.history[this.historyHead] = key;
@@ -87,7 +107,12 @@
                 this.background.style.backgroundImage = "url('" + image_uri + "')";
                 this.mainImage.src = image_uri;
                 this.timeoutId = setTimeout(this.updateSlide, this.slideshowIntervalMs);
-            }; 
+            };
+
+            img.onerror = () => {
+                this.flashStatus('Failed to load image');
+                this.timeoutId = setTimeout(this.updateSlide, this.slideshowIntervalMs);
+            };
         }
     }
 

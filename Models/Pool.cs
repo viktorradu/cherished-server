@@ -5,11 +5,13 @@ public class Pool{
     private string PoolFolder = "";
     private string PoolFilter = "";
     public int PoolSize { get; set; }
+    public int SlideshowIntervalMs { get; set; }
 
     public Pool(IOptions<PoolSettings> settings)
     {
         PoolFolder = settings.Value.PoolFolder;
         PoolFilter = settings.Value.PoolFilter;
+        SlideshowIntervalMs = settings.Value.SlideshowIntervalMs;
     }
 
     public async Task BuildPool()
