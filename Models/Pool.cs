@@ -66,6 +66,11 @@ public class Pool{
         return GetFileList(_Pool[from].Folder)[position - _Pool[from].FirstFilePosition];
     }
 
+    public string GetFileLocationFromPath(string path){
+        var pathPart = path.Replace(PoolFolder, "");
+        return pathPart.StartsWith(Path.DirectorySeparatorChar.ToString()) ? pathPart.Substring(1) : pathPart;
+    }
+
     private string[] GetFileList(string dir)
     {
         var extensions = PoolFilter.Split(",".ToCharArray(), StringSplitOptions.RemoveEmptyEntries);

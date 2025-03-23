@@ -103,10 +103,16 @@
             const img = new Image();
             img.src = image_uri;
 
+            const self = this;
             img.onload = () => {
+
                 this.background.style.backgroundImage = "url('" + image_uri + "')";
                 this.mainImage.src = image_uri;
                 this.timeoutId = setTimeout(this.updateSlide, this.slideshowIntervalMs);
+                EXIF.getData(this.mainImage, function(){
+                    const label = EXIF.getTag(this, 'ImageDescription') || '';
+                    self.setStatus(label);
+                });
             };
 
             img.onerror = () => {
@@ -118,6 +124,10 @@
 
     getKey(){
         return this.history[this.historyHead];
+    }
+
+    setStatus(message){
+        this.statusBox.innerText = message;
     }
 
     flashStatus(message){

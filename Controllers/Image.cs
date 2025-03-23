@@ -1,4 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using ExifLibrary;
+using System.IO;
+using System.Text;
 
 namespace cherished_server.Services
 {
@@ -17,8 +20,14 @@ namespace cherished_server.Services
         public IActionResult GetImage([FromQuery] int key)
         {
             var path = _Pool.GetFilePath(key);
-            var image = System.IO.File.OpenRead(path);
-            return File(image, "image/jpeg");
+            var path_label = _Pool.GetFileLocationFromPath(Path.GetDirectoryName(path) ?? "");
+            var imageFile = ImageFile.FromFile(path);
+            imageFile.Properties.Add(new ExifAscii(ExifTag.ImageDescription, path_label, Encoding.UTF8));
+
+            var stream = new MemoryStream();
+            imageFile.Save(stream);
+            stream.Position = 0;
+            return File(stream, "image/jpeg");
         }
         
         [HttpGet]
