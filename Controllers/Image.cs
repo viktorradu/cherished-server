@@ -22,7 +22,14 @@ namespace cherished_server.Services
             var path = _Pool.GetFilePath(key);
             var path_label = _Pool.GetFileLocationFromPath(Path.GetDirectoryName(path) ?? "");
             var imageFile = ImageFile.FromFile(path);
-            imageFile.Properties.Add(new ExifAscii(ExifTag.ImageDescription, path_label, Encoding.UTF8));
+            var existingProperty = imageFile.Properties.Where(p=>p.Tag == ExifTag.ImageDescription).FirstOrDefault();
+            if(existingProperty != null){
+                existingProperty.Value = path_label;
+            }
+            else{
+                var property = new ExifAscii(ExifTag.ImageDescription, path_label, Encoding.UTF8);
+                imageFile.Properties.Add(property);
+            }
 
             var stream = new MemoryStream();
             imageFile.Save(stream);

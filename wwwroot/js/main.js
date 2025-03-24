@@ -109,7 +109,7 @@
                 this.background.style.backgroundImage = "url('" + image_uri + "')";
                 this.mainImage.src = image_uri;
                 this.timeoutId = setTimeout(this.updateSlide, this.slideshowIntervalMs);
-                EXIF.getData(this.mainImage, function(){
+                EXIF.getData(img, function(){
                     const label = EXIF.getTag(this, 'ImageDescription') || '';
                     self.setStatus(label);
                 });
