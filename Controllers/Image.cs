@@ -2,6 +2,9 @@
 using ExifLibrary;
 using System.IO;
 using System.Text;
+using System.Buffers.Text;
+using System.Text.Encodings.Web;
+using System.Web;
 
 namespace cherished_server.Services
 {
@@ -10,30 +13,32 @@ namespace cherished_server.Services
     public class ImageController : ControllerBase
     {
         private readonly Pool _Pool;
-
-        public ImageController(Pool pool)
+        public ImageController(Pool pool, ILogger<Pool> logger)
         {
             _Pool = pool;
         }
+
         [HttpGet]
         [Route("")]
         public IActionResult GetImage([FromQuery] int key)
         {
             var path = _Pool.GetFilePath(key);
             var path_label = _Pool.GetFileLocationFromPath(Path.GetDirectoryName(path) ?? "");
+            var safe_label = HttpUtility.UrlPathEncode(path_label);
             var imageFile = ImageFile.FromFile(path);
             var existingProperty = imageFile.Properties.Where(p=>p.Tag == ExifTag.ImageDescription).FirstOrDefault();
             if(existingProperty != null){
-                existingProperty.Value = path_label;
-            }
+                existingProperty.Value = safe_label;
+            } 
             else{
-                var property = new ExifAscii(ExifTag.ImageDescription, path_label, Encoding.UTF8);
+                var property = new ExifAscii(ExifTag.ImageDescription, safe_label, Encoding.UTF8);
                 imageFile.Properties.Add(property);
             }
 
             var stream = new MemoryStream();
             imageFile.Save(stream);
             stream.Position = 0;
+
             return File(stream, "image/jpeg");
         }
         

@@ -110,8 +110,8 @@
                 this.mainImage.src = image_uri;
                 this.timeoutId = setTimeout(this.updateSlide, this.slideshowIntervalMs);
                 EXIF.getData(img, function(){
-                    const label = EXIF.getTag(this, 'ImageDescription') || '';
-                    self.setStatus(label);
+                    const label_bytes = EXIF.getTag(this, 'ImageDescription') || '';
+                    self.setStatus(decodeURIComponent(label_bytes));
                 });
             };
 
