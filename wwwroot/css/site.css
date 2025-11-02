@@ -2,15 +2,19 @@ html, body {
   height: 100%;
   margin: 0;
   padding: 0;
-  background-color: #000000;
-  cursor: none;
 }
 
-.ch-container{
-  position: relative;
-  height: 100%;
-  text-align: center;
-  overflow: hidden;
+.ch-manager {
+  
+}
+
+.ch-container {
+    position: relative;
+    height: 100%;
+    text-align: center;
+    overflow: hidden;
+    background-color: #000000;
+    cursor: none;
 }
 
 .ch-background{

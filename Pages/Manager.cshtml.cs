@@ -3,11 +3,11 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace cherished_server.Pages
 {
-    public class IndexModel : PageModel
+    public class ManagerModel : PageModel
     {
         private readonly ILogger<IndexModel> _logger;
 
-        public IndexModel(ILogger<IndexModel> logger)
+        public ManagerModel(ILogger<IndexModel> logger)
         {
             _logger = logger;
         }
