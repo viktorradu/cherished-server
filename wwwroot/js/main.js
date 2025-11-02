@@ -17,8 +17,8 @@
     init(target) {
         this.target = target;
         this.target.className = 'ch-container';
-        this.mainImage = this.target.querySelector('img');
-        this.background = this.target.querySelector('.ch-background');
+        this.mainImage = this.target.querySelector('.ch-image img');
+        this.background = this.target.querySelector('.ch-background img');
         this.statusBox = this.target.querySelector('.ch-status');
         const buttonNext = this.target.querySelector('.ch-button-next');
         buttonNext.addEventListener('click', (e) => {
@@ -106,7 +106,7 @@
             const self = this;
             img.onload = () => {
 
-                this.background.style.backgroundImage = "url('" + image_uri + "')";
+                this.background.src = image_uri;
                 this.mainImage.src = image_uri;
                 this.timeoutId = setTimeout(this.updateSlide, this.slideshowIntervalMs);
                 EXIF.getData(img, function(){
