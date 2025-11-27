@@ -66,6 +66,34 @@ public class Pool{
         return GetFileList(_Pool[from].Folder)[position - _Pool[from].FirstFilePosition];
     }
 
+    public void SetFileHidden(int position)
+    {
+        WritePositionToFile(position, ".hidden");
+    }
+
+    public void SetFileDelete(int position)
+    {
+        WritePositionToFile(position, ".delete");
+    }
+
+    public List<string> GetHiddenFiles()
+    {
+        var hiddenFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".hidden");
+        return File.Exists(hiddenFilePath) ? File.ReadAllLines(hiddenFilePath).ToList() : new List<string>();
+    }
+
+    private void WritePositionToFile(int position, string fileName)
+    {
+        var path = GetFilePath(position);
+        var filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);
+        var lines = File.Exists(filePath) ? File.ReadAllLines(filePath).ToList() : new List<string>();
+        if (!lines.Contains(path))
+        {
+            lines.Add(path);
+            File.WriteAllLines(filePath, lines);
+        }
+    }
+
     public string GetFileLocationFromPath(string path){
         var pathPart = path.Replace(PoolFolder, "");
         return pathPart.StartsWith(Path.DirectorySeparatorChar.ToString()) ? pathPart.Substring(1) : pathPart;

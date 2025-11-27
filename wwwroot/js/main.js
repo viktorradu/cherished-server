@@ -32,9 +32,14 @@
             this.updateSlide(-1);
             e.stopPropagation();
         });
-        const buttonFlag = this.target.querySelector('.ch-button-flag');
-        buttonFlag.addEventListener('click', (e) => {
-            alert('Flag not implemented yet');
+        const buttonHide = this.target.querySelector('.ch-button-hide');
+        buttonHide.addEventListener('click', (e) => {
+            this.setHidden(this.getKey());
+            e.stopPropagation();
+        });
+        const buttonDelete = this.target.querySelector('.ch-button-delete');
+        buttonDelete.addEventListener('click', (e) => {
+            this.setDeleted(this.getKey());
             e.stopPropagation();
         });
         this.target.addEventListener('click', () => {
@@ -105,7 +110,6 @@
 
             const self = this;
             img.onload = () => {
-
                 this.background.src = image_uri;
                 this.mainImage.src = image_uri;
                 this.timeoutId = setTimeout(this.updateSlide, this.slideshowIntervalMs);
@@ -116,10 +120,38 @@
             };
 
             img.onerror = () => {
-                this.flashStatus('Failed to load image');
-                this.timeoutId = setTimeout(this.updateSlide, this.slideshowIntervalMs);
+                console.log(key);
+                this.timeoutId = setTimeout(this.updateSlide, 100);
             };
         }
+    }
+
+    setHidden(key){
+        fetch(`image/hide?key=${key}`, { method: 'POST' })
+            .then(response => {
+                if (response.ok) {
+                    this.flashStatus('Hidden');
+                } else {
+                    this.flashStatus('Failed to hide image');
+                }
+            })
+            .catch(error => {
+                this.flashStatus(error.message);
+            });
+    }
+
+    setDeleted(key){
+        fetch(`image/delete?key=${key}`, { method: 'POST' })
+            .then(response => {
+                if (response.ok) {
+                    this.flashStatus('Deleted');
+                } else {
+                    this.flashStatus('Failed to delete image');
+                }
+            })
+            .catch(error => {
+                this.flashStatus(error.message);
+            });
     }
 
     getKey(){
