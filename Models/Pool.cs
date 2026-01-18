@@ -71,9 +71,9 @@ public class Pool{
         WritePositionToFile(position, ".hidden");
     }
 
-    public void SetFileDelete(int position)
+    public void SetFileFlagged(int position)
     {
-        WritePositionToFile(position, ".delete");
+        WritePositionToFile(position, ".flagged");
     }
 
     public List<string> GetHiddenFiles()

@@ -1,6 +1,7 @@
 ﻿export default class Main {
     constructor() {
         this.slideshowIntervalMs = 3000;
+        this.activeTimer = true;
         this.timeoutId = null;
         this.target = null;
         this.mainImage = null;
@@ -12,6 +13,7 @@
         this.history = new Array(100).fill(null);
         this.historyHead = 0;
         this.historyOffset = 0;
+        this.lastStatusMessage = '';
     }
 
     init(target) {
@@ -37,21 +39,23 @@
             this.setHidden(this.getKey());
             e.stopPropagation();
         });
-        const buttonDelete = this.target.querySelector('.ch-button-delete');
-        buttonDelete.addEventListener('click', (e) => {
-            this.setDeleted(this.getKey());
+        const buttonFlag = this.target.querySelector('.ch-button-flag');
+        buttonFlag.addEventListener('click', (e) => {
+            this.setFlagged(this.getKey());
             e.stopPropagation();
         });
         this.target.addEventListener('click', () => {
-            if(this.target.classList.contains('paused')) {
+            if(this.activeTimer) {
+                this.activeTimer = false;
+                this.flashStatus('Paused');
+                this.target.classList.add('paused');
+                clearTimeout(this.timeoutId);
+            } else {
+                this.activeTimer = true;
                 this.flashStatus('Running');
                 this.target.classList.remove('paused');
                 clearTimeout(this.timeoutId);
                 this.updateSlide();
-            } else {
-                this.flashStatus('Paused');
-                this.target.classList.add('paused');
-                clearTimeout(this.timeoutId);
             }
         });
         window.addEventListener('keyup', (event) => {
@@ -91,11 +95,11 @@
             }
 
             if (this.historyOffset > 0) {
-                const historyIndex = this.historyHead - this.historyOffset;
+                let historyIndex = this.historyHead - this.historyOffset;
                 if (historyIndex < 0) {
                     historyIndex = this.history.length + historyIndex;
                 }
-                key = this.history[this.historyHead - this.historyOffset];
+                key = this.history[historyIndex];
             }
 
             if (key === null) {
@@ -112,7 +116,9 @@
             img.onload = () => {
                 this.background.src = image_uri;
                 this.mainImage.src = image_uri;
-                this.timeoutId = setTimeout(this.updateSlide, this.slideshowIntervalMs);
+                if(this.activeTimer) {
+                    this.timeoutId = setTimeout(this.updateSlide, this.slideshowIntervalMs);
+                }
                 EXIF.getData(img, function(){
                     const label_bytes = EXIF.getTag(this, 'ImageDescription') || '';
                     self.setStatus(decodeURIComponent(label_bytes));
@@ -121,7 +127,9 @@
 
             img.onerror = () => {
                 console.log(key);
-                this.timeoutId = setTimeout(this.updateSlide, 100);
+                if(this.activeTimer) {
+                    this.timeoutId = setTimeout(this.updateSlide, 100);
+                }
             };
         }
     }
@@ -140,13 +148,13 @@
             });
     }
 
-    setDeleted(key){
-        fetch(`image/delete?key=${key}`, { method: 'POST' })
+    setFlagged(key){
+        fetch(`image/flag?key=${key}`, { method: 'POST' })
             .then(response => {
                 if (response.ok) {
-                    this.flashStatus('Deleted');
+                    this.flashStatus('Flagged');
                 } else {
-                    this.flashStatus('Failed to delete image');
+                    this.flashStatus('Failed to flag the image');
                 }
             })
             .catch(error => {
@@ -159,13 +167,14 @@
     }
 
     setStatus(message){
+        this.lastStatusMessage = message;
         this.statusBox.innerText = message;
     }
 
     flashStatus(message){
         this.statusBox.innerText = message;
         setTimeout(()=>{
-            this.statusBox.innerText = '';
+            this.statusBox.innerText = this.lastStatusMessage;
         }, 2000);
     }
 }

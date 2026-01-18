@@ -56,10 +56,10 @@ namespace cherished_server.Services
         }
 
         [HttpPost]
-        [Route("delete")]
-        public IActionResult SetDelete([FromQuery] int key)
+        [Route("flag")]
+        public IActionResult SetFlagged([FromQuery] int key)
         {
-            _Pool.SetFileDelete(key);
+            _Pool.SetFileFlagged(key);
             return Ok();
         }
         
