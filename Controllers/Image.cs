@@ -23,6 +23,11 @@ namespace cherished_server.Services
         public IActionResult GetImage([FromQuery] int key)
         {
             var path = _Pool.GetFilePath(key);
+            var hiddenFiles = _Pool.GetHiddenFiles();
+            if (hiddenFiles.Contains(path))
+            {
+                return new EmptyResult();
+            }
             var path_label = _Pool.GetFileLocationFromPath(Path.GetDirectoryName(path) ?? "");
             var safe_label = HttpUtility.UrlPathEncode(path_label);
             var imageFile = ImageFile.FromFile(path);
@@ -40,6 +45,22 @@ namespace cherished_server.Services
             stream.Position = 0;
 
             return File(stream, "image/jpeg");
+        }
+
+        [HttpPost]
+        [Route("hide")]
+        public IActionResult SetHidden([FromQuery] int key)
+        {
+            _Pool.SetFileHidden(key);
+            return Ok();
+        }
+
+        [HttpPost]
+        [Route("delete")]
+        public IActionResult SetDelete([FromQuery] int key)
+        {
+            _Pool.SetFileDelete(key);
+            return Ok();
         }
         
         [HttpGet]
