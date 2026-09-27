@@ -40,7 +40,7 @@ try {
 
     New-Item -ItemType Directory -Path $Destination -Force | Out-Null
 
-    & robocopy $publishPath $Destination /E /XF .hidden .flagged /R:2 /W:1 /NP
+    & robocopy $publishPath $Destination /E /XF .hidden .flagged appsettings.json /R:2 /W:1 /NP
     if ($LASTEXITCODE -ge 8) {
         throw "Deployment failed with robocopy exit code $LASTEXITCODE."
     }
