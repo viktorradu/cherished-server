@@ -6,8 +6,32 @@
 
 <div id="main" class="ch-container">
     <div class="ch-background"><img /></div>
-    <div class="ch-image"><img /></div>
-    <div class="ch-status"></div>
+    <div class="ch-image">
+        <div class="ch-image-frame">
+            <img />
+            <span class="ch-pause-indicator" role="img" aria-label="Paused" aria-hidden="true">&#x23F8;</span>
+        </div>
+    </div>
+    <div class="ch-status" role="status" aria-live="polite">
+        <span class="ch-status-label"></span>
+    </div>
+    <aside class="ch-sensors" aria-label="Home conditions" hidden>
+        <div class="ch-sensor-status" role="status" aria-live="polite"></div>
+        <table>
+            <tbody>
+                <tr>
+                    <th scope="row">Inside</th>
+                    <td class="ch-sensor-value" data-sensor="insideTemperature">Unavailable</td>
+                    <td class="ch-sensor-value" data-sensor="insideHumidity">Unavailable</td>
+                </tr>
+                <tr>
+                    <th scope="row">Outside</th>
+                    <td class="ch-sensor-value" data-sensor="outsideTemperature">Unavailable</td>
+                    <td class="ch-sensor-value" data-sensor="outsideHumidity">Unavailable</td>
+                </tr>
+            </tbody>
+        </table>
+    </aside>
     <div class="ch-controls">
         <button class="ch-button ch-button-prev" type="button">
             <svg xmlns="http://www.w3.org/2000/svg" height="80%" fill="#444444" viewBox="0 0 512 512">

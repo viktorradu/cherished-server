@@ -1,0 +1,8 @@
+{
+  "ImageDirectory": "",
+  "StateDirectory": "",
+  "Port": 8083,
+  "PoolFilter": ".jpg,.jpeg",
+  "SlideshowIntervalMs": 3000,
+  "RefreshIntervalMs": 10000
+}

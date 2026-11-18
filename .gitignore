@@ -3,3 +3,5 @@ bin/
 *.vsidx
 *.user
 .vs/
+artifacts/
+install-settings.json

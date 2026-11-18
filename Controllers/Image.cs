@@ -1,10 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using ExifLibrary;
-using System.IO;
-using System.Text;
-using System.Buffers.Text;
-using System.Text.Encodings.Web;
-using System.Web;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.StaticFiles;
 
 namespace cherished_server.Services
 {
@@ -12,62 +7,66 @@ namespace cherished_server.Services
     [Route("image")]
     public class ImageController : ControllerBase
     {
-        private readonly Pool _Pool;
+        private readonly Pool _pool;
+        private readonly ILogger<Pool> _logger;
+        private static readonly FileExtensionContentTypeProvider ContentTypes = new();
+
         public ImageController(Pool pool, ILogger<Pool> logger)
         {
-            _Pool = pool;
+            _pool = pool;
+            _logger = logger;
         }
 
-        [HttpGet]
-        [Route("")]
-        public IActionResult GetImage([FromQuery] int key)
+        [HttpGet("")]
+        public IActionResult GetImage([FromQuery] string key)
         {
-            var path = _Pool.GetFilePath(key);
-            var hiddenFiles = _Pool.GetHiddenFiles();
-            if (hiddenFiles.Contains(path))
+            if (!_pool.Snapshot.IsReady)
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "Pool is not ready." });
+            var path = _pool.GetFilePath(key);
+            if (path is null)
+                return NotFound(new { error = "Image is unavailable." });
+            try
             {
-                return new EmptyResult();
+                var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+                ContentTypes.TryGetContentType(path, out var contentType);
+                return File(stream, contentType ?? "application/octet-stream");
             }
-            var path_label = _Pool.GetFileLocationFromPath(Path.GetDirectoryName(path) ?? "");
-            var safe_label = HttpUtility.UrlPathEncode(path_label);
-            var imageFile = ImageFile.FromFile(path);
-            var existingProperty = imageFile.Properties.Where(p=>p.Tag == ExifTag.ImageDescription).FirstOrDefault();
-            if(existingProperty != null){
-                existingProperty.Value = safe_label;
-            } 
-            else{
-                var property = new ExifAscii(ExifTag.ImageDescription, safe_label, Encoding.UTF8);
-                imageFile.Properties.Add(property);
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+            {
+                _logger.LogWarning(error, "Image {Id} could not be opened.", key);
+                return NotFound(new { error = "Image is unavailable." });
             }
-
-            var stream = new MemoryStream();
-            imageFile.Save(stream);
-            stream.Position = 0;
-
-            return File(stream, "image/jpeg");
         }
 
-        [HttpPost]
-        [Route("hide")]
-        public IActionResult SetHidden([FromQuery] int key)
+        [HttpPost("hide")]
+        public IActionResult SetHidden([FromQuery] string key) => Mark(key, true);
+
+        [HttpPost("flag")]
+        public IActionResult SetFlagged([FromQuery] string key) => Mark(key, false);
+
+        private IActionResult Mark(string key, bool hide)
         {
-            _Pool.SetFileHidden(key);
-            return Ok();
+            if (!_pool.Snapshot.IsReady)
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "Pool is not ready." });
+            try
+            {
+                return (hide ? _pool.SetFileHidden(key) : _pool.SetFileFlagged(key))
+                    ? Ok() : NotFound(new { error = "Image is unavailable." });
+            }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+            {
+                _logger.LogError(error, "Could not persist {Action} for image {Id}.", hide ? "hide" : "flag", key);
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "Could not save image action." });
+            }
         }
 
-        [HttpPost]
-        [Route("flag")]
-        public IActionResult SetFlagged([FromQuery] int key)
-        {
-            _Pool.SetFileFlagged(key);
-            return Ok();
-        }
-        
-        [HttpGet]
-        [Route("loadpool")]
+        [HttpGet("loadpool")]
         public IActionResult LoadPool()
         {
-            return Ok(new {PoolSize = _Pool.PoolSize, SlideshowIntervalMs = _Pool.SlideshowIntervalMs});
+            var snapshot = _pool.Snapshot;
+            if (!snapshot.IsReady)
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "Pool is not ready." });
+            return Ok(new { PoolSize = snapshot.Images.Count, _pool.SlideshowIntervalMs, Images = snapshot.Images });
         }
     }
 }

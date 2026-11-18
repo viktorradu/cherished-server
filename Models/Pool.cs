@@ -1,109 +1,163 @@
+using System.Collections.Frozen;
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.Extensions.Options;
 
-public class Pool{
-    private readonly List<PoolItem> _Pool = new List<PoolItem>();
-    private string PoolFolder = "";
-    private string PoolFilter = "";
-    public int PoolSize { get; set; }
-    public int SlideshowIntervalMs { get; set; }
+public sealed record PoolImage(string Id, string Label);
+
+public sealed class PoolSnapshot
+{
+    public bool IsReady { get; }
+    public FrozenDictionary<string, PoolItem> Files { get; }
+    public IReadOnlyList<PoolImage> Images { get; }
+
+    public PoolSnapshot(bool isReady, IEnumerable<PoolItem> files, string root)
+    {
+        IsReady = isReady;
+        Files = files.ToFrozenDictionary(file => file.Id, StringComparer.Ordinal);
+        Images = Array.AsReadOnly(Files.Values
+            .OrderBy(file => file.Id, StringComparer.Ordinal)
+            .Select(file =>
+            {
+                var label = Path.GetRelativePath(root, Path.GetDirectoryName(file.Path) ?? root);
+                return new PoolImage(file.Id, label == "." ? "" : label);
+            })
+            .ToArray());
+    }
+}
+
+public class Pool
+{
+    private readonly string _folder;
+    private readonly HashSet<string> _extensions;
+    private readonly string _stateFolder;
+    private readonly object _publishLock = new();
+    private readonly SemaphoreSlim _buildLock = new(1, 1);
+    private static readonly StringComparer PathComparer =
+        OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+    private PoolSnapshot _snapshot;
+
+    public PoolSnapshot Snapshot => Volatile.Read(ref _snapshot);
+    public int PoolSize => Snapshot.Images.Count;
+    public int SlideshowIntervalMs { get; }
+    public int RefreshIntervalMs { get; }
 
     public Pool(IOptions<PoolSettings> settings)
+        : this(settings, string.IsNullOrWhiteSpace(settings.Value.StateFolder)
+            ? AppDomain.CurrentDomain.BaseDirectory : settings.Value.StateFolder) { }
+
+    public Pool(IOptions<PoolSettings> settings, string stateFolder)
     {
-        PoolFolder = settings.Value.PoolFolder;
-        PoolFilter = settings.Value.PoolFilter;
-        SlideshowIntervalMs = settings.Value.SlideshowIntervalMs;
+        var value = settings.Value;
+        if (!PoolSettings.IsValid(value))
+            throw new ArgumentException("Invalid pool folder, filter, or timing settings.", nameof(settings));
+        _folder = Path.GetFullPath(value.PoolFolder);
+        _stateFolder = Path.GetFullPath(stateFolder);
+        Directory.CreateDirectory(_stateFolder);
+        _extensions = value.PoolFilter.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        SlideshowIntervalMs = value.SlideshowIntervalMs;
+        RefreshIntervalMs = value.RefreshIntervalMs;
+        _snapshot = new PoolSnapshot(false, [], _folder);
     }
 
-    public async Task BuildPool()
+    public async Task BuildPool(CancellationToken cancellationToken = default)
     {
-        _Pool.Clear();
-        await BuildPoolRecursive(PoolFolder);
-    }
-
-    private async Task BuildPoolRecursive(string startDir)
-    {
-        var dirs = new List<string>
+        await _buildLock.WaitAsync(cancellationToken);
+        try
         {
-            startDir
-        };
-        dirs.AddRange(Directory.GetDirectories(startDir));
-        foreach (var dir in dirs)
-        {
-            var fileCount = GetFileList(dir).Length;
-            if (fileCount > 0)
+            var files = await Task.Run(() => Scan(cancellationToken), cancellationToken);
+            lock (_publishLock)
             {
-                _Pool.Add(new PoolItem(dir, PoolSize, PoolSize + fileCount - 1));
-                PoolSize += fileCount;
+                cancellationToken.ThrowIfCancellationRequested();
+                var hidden = ReadMarks(".hidden");
+                var snapshot = new PoolSnapshot(true, files.Where(file => !hidden.Contains(file.Path)), _folder);
+                cancellationToken.ThrowIfCancellationRequested();
+                Volatile.Write(ref _snapshot, snapshot);
             }
-            if(dir != startDir){
-                await BuildPoolRecursive(dir);
-            }
+        }
+        finally
+        {
+            _buildLock.Release();
         }
     }
 
-    public string GetFilePath(int position)
+    private List<PoolItem> Scan(CancellationToken cancellationToken)
     {
-        var from = 0;
-        var to = _Pool.Count - 1;
-        var safety = 0;
-        while (from < to && safety < PoolSize)
+        var files = new List<PoolItem>();
+        var pending = new Stack<string>();
+        pending.Push(_folder);
+        while (pending.TryPop(out var directory))
         {
-            var test = (int)Math.Floor((to + from) / 2.0);
-            if (_Pool[test].FirstFilePosition > position)
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!DirectoryReparsePoints.CanTraverse(directory))
+                throw new IOException($"Image directory is a link or unsupported reparse point: {directory}");
+            foreach (var entry in Directory.EnumerateFileSystemEntries(directory))
             {
-                to = test;
+                cancellationToken.ThrowIfCancellationRequested();
+                var attributes = File.GetAttributes(entry);
+                if ((attributes & FileAttributes.Directory) != 0)
+                {
+                    if (DirectoryReparsePoints.CanTraverse(entry))
+                        pending.Push(entry);
+                }
+                else if (_extensions.Contains(Path.GetExtension(entry)))
+                {
+                    var identity = OperatingSystem.IsWindows() ? entry.ToUpperInvariant() : entry;
+                    var id = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(identity)));
+                    files.Add(new PoolItem(id, entry));
+                }
             }
-            if (_Pool[test].LastFilePosition > position)
-            {
-                to = test;
-            }
-            if (_Pool[test].LastFilePosition < position)
-            {
-                from = test + 1;
-            }
-            safety++;
         }
-        return GetFileList(_Pool[from].Folder)[position - _Pool[from].FirstFilePosition];
+        return files;
     }
 
-    public void SetFileHidden(int position)
-    {
-        WritePositionToFile(position, ".hidden");
-    }
+    public string? GetFilePath(string id) =>
+        Snapshot.Files.TryGetValue(id, out var item) ? item.Path : null;
 
-    public void SetFileFlagged(int position)
-    {
-        WritePositionToFile(position, ".flagged");
-    }
+    public bool SetFileHidden(string id) => WriteMark(id, ".hidden");
+    public bool SetFileFlagged(string id) => WriteMark(id, ".flagged");
 
-    public List<string> GetHiddenFiles()
+    private HashSet<string> ReadMarks(string name)
     {
-        var hiddenFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".hidden");
-        return File.Exists(hiddenFilePath) ? File.ReadAllLines(hiddenFilePath).ToList() : new List<string>();
-    }
-
-    private void WritePositionToFile(int position, string fileName)
-    {
-        var path = GetFilePath(position);
-        var filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);
-        var lines = File.Exists(filePath) ? File.ReadAllLines(filePath).ToList() : new List<string>();
-        if (!lines.Contains(path))
+        var path = Path.Combine(_stateFolder, name);
+        try
         {
-            lines.Add(path);
-            File.WriteAllLines(filePath, lines);
+            return File.ReadAllLines(path).ToHashSet(PathComparer);
+        }
+        catch (FileNotFoundException)
+        {
+            return new HashSet<string>(PathComparer);
         }
     }
 
-    public string GetFileLocationFromPath(string path){
-        var pathPart = path.Replace(PoolFolder, "");
-        return pathPart.StartsWith(Path.DirectorySeparatorChar.ToString()) ? pathPart.Substring(1) : pathPart;
-    }
-
-    private string[] GetFileList(string dir)
+    private bool WriteMark(string id, string name)
     {
-        var extensions = PoolFilter.Split(",".ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
-        return Directory.GetFiles(dir)
-            .Where(f=>extensions.Any(e=> f.ToLower().EndsWith(e)))
-            .ToArray();
+        lock (_publishLock)
+        {
+            var current = Snapshot;
+            if (!current.Files.TryGetValue(id, out var item))
+                return false;
+            var marks = ReadMarks(name);
+            if (marks.Add(item.Path))
+            {
+                var destination = Path.Combine(_stateFolder, name);
+                var temporary = destination + "." + Guid.NewGuid().ToString("N") + ".tmp";
+                try
+                {
+                    File.WriteAllLines(temporary, marks);
+                    File.Move(temporary, destination, true);
+                }
+                finally
+                {
+                    if (File.Exists(temporary))
+                        File.Delete(temporary);
+                }
+            }
+            if (name == ".hidden")
+                Volatile.Write(ref _snapshot, new PoolSnapshot(current.IsReady,
+                    current.Files.Values.Where(file => file.Id != id), _folder));
+            return true;
+        }
     }
 }
